@@ -1,1 +1,7 @@
+numpy
+pandas
+matplotlib
+IPython
 librosa
+scikit-learn
+keras
