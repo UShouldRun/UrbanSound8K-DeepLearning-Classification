@@ -76,9 +76,8 @@ class Trainer(BaseTrainer):
             total_loss += loss.item()
             total_metrics += self._eval_metrics(output, target)
 
-
             if self.verbosity >= 2 and batch_idx % self.log_step == 0:                
-                _str = 'Train Epoch: {} Loss: {:.6f}'.format(epoch,loss.item()) 
+                _str = 'Train Epoch: {} Loss: {:.6f}'.format(epoch, loss.item()) 
                 _trange.set_description(_str)
 
         # Add epoch metrics
@@ -88,8 +87,6 @@ class Trainer(BaseTrainer):
         self.writer.add_scalar('loss', loss)
         for i, metric in enumerate(self.metrics):
             self.writer.add_scalar("%s"%metric.__name__, metrics[i])
-
-        
 
         if self.config['data']['format'] == 'image':
             self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
@@ -121,11 +118,9 @@ class Trainer(BaseTrainer):
         total_val_loss = 0
         total_val_metrics = np.zeros(len(self.metrics))
 
-
-        self.writer.set_step(epoch, 'valid')        
+        self.writer.set_step(epoch, 'valid')
 
         with torch.no_grad():
-
             for batch_idx, batch in enumerate(self.valid_data_loader):
                 batch = [b.to(self.device) for b in batch]
                 data, target = batch[:-1], batch[-1]
@@ -141,7 +136,6 @@ class Trainer(BaseTrainer):
                 total_val_metrics += self._eval_metrics(output, target)
 
                 #self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
-
 
             # Add epoch metrics
             val_loss = total_val_loss / len(self.valid_data_loader)
@@ -161,12 +155,12 @@ class Trainer(BaseTrainer):
                 self.writer.add_image('input', make_grid(data.cpu(), nrow=8, normalize=True))
 
     
-            #for name, param in self.model.named_parameters():
+            # for name, param in self.model.named_parameters():
             #    if param.requires_grad:
             #        self.writer.add_histogram(name, param.clone().cpu().numpy(), bins='doane')
 
 
         return {
             'val_loss': val_loss,
-            'val_metrics':val_metrics
-            }
+            'val_metrics': val_metrics
+        }

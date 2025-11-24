@@ -1,14 +1,9 @@
-
-
 import numpy as np
 
 import torch
 from torchvision import transforms
 
-
-
 class ImageTransforms(object):
-
     def __init__(self, name, size, scale, ratio, colorjitter):
         self.transfs = {
             'val': transforms.Compose([
@@ -29,15 +24,11 @@ class ImageTransforms(object):
             ])
         }[name]
 
-
     def apply(self, data, target):
         return self.transfs(data), target
 
-
 class AudioTransforms(object):
-
     def __init__(self, name, args):
-        
         self.transfs = {
             'val': transforms.Compose([
                 ProcessChannels(args['channels']),
@@ -59,9 +50,7 @@ class AudioTransforms(object):
     def __repr__(self):
         return self.transfs.__repr__()
 
-
 class ProcessChannels(object):
-
     def __init__(self, mode):
         self.mode = mode
 
@@ -83,18 +72,14 @@ class ProcessChannels(object):
     def __repr__(self):
         return self.__class__.__name__ + '(mode={})'.format(self.mode)
 
-
 class ToTensorAudio(object):
-
     def __call__(self, tensor):
         return torch.from_numpy(tensor)
 
     def __repr__(self):
         return self.__class__.__name__ + '()'
 
-
 class AugmentationTransform(object):
-
     def __init__(self, prob=None, sig=None, dist_type='uniform'):
         self.sig, self.dist_type = sig, dist_type 
         self.dist = self._get_dist(sig, dist_type)
@@ -128,13 +113,10 @@ class AugmentationTransform(object):
         param_str = '(prob={}, sig={}, dist_type={})'.format(
                         self.prob, self.sig, self.dist_type)
         return self.__class__.__name__ + param_str
-    
 
 class AdditiveNoise(AugmentationTransform):
-
     def  __init__(self, prob, sig, dist_type='normal'):
         super(AdditiveNoise, self).__init__(prob, sig, dist_type)
-
 
     def _noise(self, length):
         return self.dist(length)
@@ -143,9 +125,7 @@ class AdditiveNoise(AugmentationTransform):
         noise = self._noise(tensor.shape[0])[:,None]
         return tensor + noise
 
-
 class RandomCropLength(AugmentationTransform):
-
     def __init__(self, prob, sig, dist_type='half'):
         super(RandomCropLength, self).__init__(prob, sig, dist_type)
 
@@ -167,11 +147,7 @@ class RandomCropLength(AugmentationTransform):
         ind_end = ind_start + new_length
         return ind_start, ind_end, perc
 
-
-
-
 class ModifyDuration(object):
-
     def __init__(self, duration):
         self.duration = duration
 
@@ -181,9 +157,7 @@ class ModifyDuration(object):
     def __repr__(self):
         return self.__class__.__name__ + '(duration={})'.format(self.duration)
 
-
     def _modify_duration(self, audio, dur):
-        
         if dur < len(audio):
             max_index_start = len(audio) - dur
             index_start = np.random.randint(0,max_index_start)
@@ -195,10 +169,4 @@ class ModifyDuration(object):
             padd_reps = [audio[:round(len(audio)*(ratio%1))]]
             new_audio = np.concatenate(full_reps + padd_reps, axis=0)
             
-        return new_audio 
-
-
-
-
-
-
+        return new_audio

@@ -1,4 +1,3 @@
-
 import os
 import pandas as pd
 import numpy as np
@@ -10,15 +9,12 @@ from torch.utils.data.dataloader import default_collate
 from data.data_sets import FolderDataset
 from utils.util import list_dir, load_image, load_audio
 
-
 class FolderDataManager(object):
-
     def __init__(self, config):
-
         load_formats = {
-                'image':load_image,
-                'audio':load_audio
-                }
+            'image': load_image,
+            'audio': load_audio
+        }
 
         assert np.sum(list(config['splits'].values())) >= .999, "Splits must add up to 1"
         assert config['format'] in load_formats, "Pass valid data format"
@@ -41,7 +37,6 @@ class FolderDataManager(object):
             self.data_splits = self._get_splits(data_arr)
             torch.save(self.data_splits, path_splits) 
 
-
     def _get_splits(self, arr):
         np.random.seed(0)
         ret = {s:[] for s in self.splits.keys()}
@@ -54,9 +49,7 @@ class FolderDataManager(object):
         return ret
 
     def _get_dic(self):
-
         ret = {}
-
         classes = list_dir(self.dir_path)
 
         class_to_idx = dict(zip(classes, np.arange(len(classes))))
@@ -71,7 +64,6 @@ class FolderDataManager(object):
                 ret[c].append( os.path.join(c_path, n) )
  
         return ret, mappings, classes
-    
 
     def _get_arr(self, data_dic):
         ret = [];
@@ -86,7 +78,6 @@ class FolderDataManager(object):
         for k,v in data_dic.items():
             ret[k] = len(v)
         return ret
-
 
     def get_loader(self, name, transfs):
         assert name in self.data_splits
@@ -105,17 +96,12 @@ class FolderDataManager(object):
         #seqs_pad = seqs_pad_t.transpose(0,1)
         return seqs_pad, lengths, srs, labels
 
-
-
 class CSVDataManager(object):
-
     def __init__(self, config):
-
         load_formats = {
-                'image':load_image,
-                'audio':load_audio
-                }
-
+            'image': load_image,
+            'audio': load_audio
+        }
 
         assert config['format'] in load_formats, "Pass valid data format"
 
@@ -132,7 +118,6 @@ class CSVDataManager(object):
 
         self.classes = self._get_classes(self.metadata_df[['class', 'classID']])
         self.data_splits = self._10kfold_split(self.metadata_df)
-        
 
     def _remove_too_small(self, df, min_sec=0.5):
         # Could also make length 1 if it is below 1 and then implicitly we
@@ -178,12 +163,3 @@ class CSVDataManager(object):
         seqs_pad = torch.nn.utils.rnn.pad_sequence(seqs, batch_first=True, padding_value=0)
         #seqs_pad = seqs_pad_t.transpose(0,1)
         return seqs_pad, lengths, srs, labels
-
-
-if __name__ == '__main__':
-
-    pass
-
-
-
-

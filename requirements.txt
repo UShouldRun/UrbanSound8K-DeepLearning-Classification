@@ -5,3 +5,9 @@ IPython
 librosa
 scikit-learn
 keras
+torch
+torchvision
+torchaudio
+tensorboardX
+https://github.com/ksanjeevan/crnn-audio-classification
+tqdm

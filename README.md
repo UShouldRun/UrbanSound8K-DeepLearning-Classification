@@ -3,7 +3,6 @@
 ## References
 
 ### Code References
-- Ravising H. (n.d.). *Urbansound8k*. GitHub repository. [https://github.com/ravising-h/Urbansound8k](https://github.com/ravising-h/Urbansound8k)
 - Sanjeevan, K. (n.d.). *CRNN Audio Classification*. GitHub repository. [https://github.com/ksanjeevan/crnn-audio-classification](https://github.com/ksanjeevan/crnn-audio-classification)
 
 ### Dataset

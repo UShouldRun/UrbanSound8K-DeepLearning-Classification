@@ -5,6 +5,7 @@ import logging
 import datetime
 import torch
 import pandas as pd
+
 from utils.util import mkdir_p
 from utils.visualization import WriterTensorboardX
 
@@ -61,7 +62,6 @@ class BaseTrainer:
                 fw.write(open(self.config['cfg']).read())
             self.config['cfg'] = cfg_save_path
 
-
         config_save_path = os.path.join(self.checkpoint_dir, 'config.json')
         with open(config_save_path, 'w') as handle:
             json.dump(self.config, handle, indent=4, sort_keys=False)
@@ -69,7 +69,6 @@ class BaseTrainer:
         if resume:
             self._resume_checkpoint(resume)
     
-
     def train(self):
         """
         Full training logic
@@ -77,12 +76,9 @@ class BaseTrainer:
         best_df = None
         not_improved_count = 0
 
-
-        #f = open(os.path.join(self.log_dir, 'lr.txt'), 'w')
-
+        # f = open(os.path.join(self.log_dir, 'lr.txt'), 'w')
 
         for epoch in range(self.start_epoch, self.epochs + 1):
-            
             # _train_epoch returns dict with train metrics ("metrics"), validation
             # metrics ("val_metrics") and other key,value pairs. Store/update them in log.
             result = self._train_epoch(epoch)
@@ -110,7 +106,6 @@ class BaseTrainer:
                     self.logger.info('{}'.format(df.loc[df.index!='epoch']))
                     self.logger.info('lr_0: {}'.format(c_lr) )
                     
-
             #f.write('%.5f\t%.5f\t%.5f\n'%(c_lr, result['loss'], result['metrics'][0]))
             #f.flush()
             self.writer.add_scalar('lr', c_lr)
@@ -207,5 +202,3 @@ class BaseTrainer:
 
         self.train_logger = checkpoint['logger']
         self.logger.info("Checkpoint '{}' (epoch {}) loaded".format(resume_path, self.start_epoch))
-
-        

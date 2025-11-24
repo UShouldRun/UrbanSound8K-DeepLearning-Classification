@@ -1,187 +1,80 @@
 import os
-
 import torch
-import torch.optim as optim
-
-from torch import nn
-from torch.utils.data import DataLoader
+import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
+from torch import optim
 
-class NeuralNetwork(nn.Module):
-    def __init__(self, linear_relu_stack, name: str = "nn_model"):
-        super().__init__()
-        self.flatten = nn.Flatten()  # keeps batch dimension
+from .base_model import BaseModel
+from .audio import MelspectrogramStretch
+from torchparse import parse_cfg
 
-        self.linear_relu_stack = linear_relu_stack
-
-        self.name = name
-
-    def forward(self, batch):    
-        # x-> (batch, time, channel)
-        x, lengths, _ = batch # unpacking seqs, lengths and srs
-
-        # x-> (batch, channel, time)
-        x = x.float().transpose(1,2)
-        # x -> (batch, channel, freq, time)
-        x, lengths = self.spec(x, lengths)                
-
-        # x -> (batch, time, freq, channel)
-        x = x.transpose(1, -1)
-
-        # x -> (batch, time, channel*freq)
-        batch, time = x.size()[:2]
-        x = x.reshape(batch, time, -1)
-        x_pack = torch.nn.utils.rnn.pack_padded_sequence(x, lengths, batch_first=True)
-    
-        # x -> (batch, time, lstm_out)
-        x_pack, hidden = self.net['recur'](x_pack)
-        x, _ = torch.nn.utils.rnn.pad_packed_sequence(x_pack, batch_first=True)
+class RNN(BaseModel):
+    def __init__(self, classes, config={}, state_dict=None):
+        super(RNN, self).__init__(config)
         
-        # (batch, lstm_out)
-        x = self._many_to_one(x, lengths)
-        # (batch, classes)
-        x = self.net['dense'](x)
+        # Determine input channels
+        in_chan = 2 if config.get('transforms', {}).get('args', {}).get('channels', 'mono') == 'stereo' else 1
+        
+        self.classes = classes
+        self.lstm_units = config.get('lstm_units', 64)
+        self.lstm_layers = config.get('lstm_layers', 2)
 
-        x = F.log_softmax(x, dim=1)
-
-        return x
-
-    # Instantiate a NN on the specified device
-    @staticmethod
-    def getModel(input_size: int, output_size: int, n_layers: int, start_units: int, divide_rate: float, device: torch.device) -> nn.Module:
-        layers = NeuralNetwork.generateLayers(input_size, output_size, n_layers, start_units, divide_rate)
-        model = NeuralNetwork(layers).to(device)
-        print(model)
-        return model
-
-    # Crate Layers for the NN
-    @staticmethod
-    def generateLayers(input_size: int, output_size: int, n_layers: int, start_units: int = 128, divide_rate: float = 2.0):
-        layers = []
-        in_features = input_size
-        out_features = start_units
-
-        layers.append(nn.Linear(in_features, out_features))
-        layers.append(nn.ReLU())
-
-        for i in range(n_layers - 1):
-            next_features = int(out_features / divide_rate) 
-            layers.append(nn.Linear(out_features, next_features))
-            layers.append(nn.ReLU())
-            out_features = next_features
-
-        layers.append(nn.Linear(out_features, output_size))
-
-        return nn.Sequential(*layers)
-
-    # Set the device for training (GPU if available, else CPU)
-    @staticmethod
-    def setDevice() -> torch.device:
-        device = (
-            torch.device("cuda")
-            if torch.cuda.is_available()
-            else torch.device("cpu")
+        # Spectrogram transform
+        self.spec = MelspectrogramStretch(
+            hop_length=config.get('hop_length', None),
+            num_mels=config.get('num_mels', 128),
+            fft_length=config.get('fft_length', 2048),
+            norm=config.get('norm', 'whiten'),
+            stretch_param=config.get('stretch_param', [0.4, 0.4])
         )
-        if torch.cuda.is_available():
-            print(f"Using {device} device: {torch.cuda.get_device_name(0)}")
-        else:
-            print(f"Using {device} device")
-        return device
+        
+        # Build network from cfg
+        self.net = parse_cfg(config['cfg'], in_shape=[in_chan, self.spec.n_mels, 400])
+        
+        if state_dict is not None:
+            self.load_state_dict(state_dict)
 
-    # Binary Cross Entropy With Logits Loss
-    # "This loss combines a Sigmoid layer and the BCELoss in one single class"
-    # "This version is more numerically stable than using a plain Sigmoid followed by a BCELoss"
-    @staticmethod
-    def getDefaultCriterion():
-        return nn.BCEWithLogitsLoss()
+    def _many_to_one(self, t, lengths):
+        return t[torch.arange(t.size(0)), lengths - 1]
 
-    # Adam Optimizer
-    # TODO: SDG - stocastic gradial descent
-    @staticmethod
-    def getDefaultOptimizer(model: nn.Module, lr: float = 1e-3):
-        # optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
-        return optim.Adam(model.parameters(), lr=lr)
+    def modify_lengths(self, lengths):
+        def safe_param(elem):
+            return elem if isinstance(elem, int) else elem[0]
 
-    @staticmethod
-    def trainModel(model: nn.Module, train_loader: DataLoader, optimizer, criterion, epochs: int = 10):
-        device = next(model.parameters()).device
+        for _, layer in self.net['convs'].named_children():
+            if isinstance(layer, (nn.Conv2d, nn.MaxPool2d)):
+                p, k, s = map(safe_param, [layer.padding, layer.kernel_size, layer.stride])
+                lengths = ((lengths + 2*p - k)//s + 1).long()
+        return torch.where(lengths > 0, lengths, torch.tensor(1, device=lengths.device))
 
-        for epoch in range(epochs):
-            model.train()
-            running_loss = 0.0
+    def forward(self, batch):
+        x, lengths, _ = batch  # unpack sequences, lengths, srs
 
-            for i, (inputs, labels) in enumerate(train_loader):
-                inputs, labels = inputs.to(device), labels.to(device).float()
+        # (batch, channel, time)
+        x = x.float().transpose(1, 2)
+        # spectrogram -> (batch, channel, freq, time)
+        x, lengths = self.spec(x, lengths)
+        # CNN layers
+        x = self.net['convs'](x)
+        lengths = self.modify_lengths(lengths)
+        # (batch, time, freq*channel)
+        x = x.transpose(1, -1)
+        batch_size, time = x.size()[:2]
+        x = x.reshape(batch_size, time, -1)
+        x_pack = nn.utils.rnn.pack_padded_sequence(x, lengths.cpu(), batch_first=True)
+        # LSTM
+        x_pack, _ = self.net['recur'](x_pack)
+        x, _ = nn.utils.rnn.pad_packed_sequence(x_pack, batch_first=True)
+        # many-to-one
+        x = self._many_to_one(x, lengths)
+        # Dense
+        x = self.net['dense'](x)
+        return F.log_softmax(x, dim=1)
 
-                optimizer.zero_grad()
-                outputs = model(inputs).squeeze(1)
-                loss = criterion(outputs, labels)
-                loss.backward()
-                optimizer.step()
-
-                running_loss += loss.item()
-
-            avg_loss = running_loss / len(train_loader)
-            print(f"Epoch [{epoch + 1}/{epochs}], Loss: {avg_loss:.4f}")
-
-        print("Finished Training")
-
-    def saveModel(self, folder: str = "outputs/nn") -> str:
-        os.makedirs(folder, exist_ok=True)
-        path = os.path.join(folder, f"{self.name}.pt")
-
-        torch.save(self.state_dict(), path)
-        print(f"[NeuralNetwork] Model saved to {path}")
-        return path
-
-    @staticmethod
-    def loadModel(input_size: int, output_size: int, path: str, device: torch.device) -> nn.Module:
-        model = NeuralNetwork(input_size=input_size, output_size=output_size).to(device)
-        model.load_state_dict(torch.load(path))
-        model.eval()
-        print(f"Model loaded from {path}")
-        return model
-
-    @staticmethod
-    def getModelPredictions(model: nn.Module, test_loader: DataLoader):
-        device = next(model.parameters()).device
-        model.eval()
-
-        all_predictions = []
-        all_probs = []
-
+    def predict(self, batch):
         with torch.no_grad():
-            for inputs, _ in test_loader:
-                inputs = inputs.to(device)
-                outputs = model(inputs)
-
-                probs = torch.sigmoid(outputs)
-                predicted = (outputs > 0.5).long()  # threshold at 0.5
-
-                all_probs.append(probs)
-                all_predictions.append(predicted)
-
-        all_predictions = torch.cat(all_predictions, dim=0)
-        all_probs = torch.cat(all_probs, dim=0)
-
-        return all_predictions, all_probs
-
-    # Evaluate the model.
-    @staticmethod
-    def testModel(model: nn.Module, test_loader: DataLoader):
-        device = next(model.parameters()).device
-        model.eval()
-        correct = 0
-        total = 0
-
-        with torch.no_grad():
-            for inputs, labels in test_loader:
-                inputs, labels = inputs.to(device), labels.to(device)
-                outputs = model(inputs)
-                _, predicted = torch.max(outputs, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
-
-        accuracy = 100 * correct / total
-        print(f"Test Accuracy: {accuracy:.2f}%")
-        return accuracy
+            out_raw = self.forward(batch)
+            out = torch.exp(out_raw)
+            max_ind = out.argmax().item()
+            return self.classes[max_ind], out[:, max_ind].item()

@@ -3,14 +3,11 @@ import argparse, json, os
 import torch
 
 from utils import Logger
-#from data import FolderDataManager, ImageTransforms
 import data as data_module
 import net as net_module
 
 from train import Trainer
-
 from eval import ClassificationEvaluator, AudioInference
-
 
 def _get_transform(config, name):
     tsf_name = config['transforms']['type']
@@ -23,9 +20,7 @@ def _get_model_att(checkpoint):
     classes = checkpoint['classes']
     return m_name, sd, classes
 
-
 def eval_main(checkpoint):
-
     config = checkpoint['config']
     data_config = config['data']
 
@@ -49,7 +44,6 @@ def eval_main(checkpoint):
     print(ret)
     return ret
 
-
 def infer_main(file_path, config, checkpoint):
     # Fix bugs
     if checkpoint is None:
@@ -64,7 +58,6 @@ def infer_main(file_path, config, checkpoint):
     label, conf = inference.infer(file_path)
     print(label, conf)
     inference.draw(file_path, label, conf)
-
 
 def train_main(config, resume):
     train_logger = Logger()
@@ -85,7 +78,6 @@ def train_main(config, resume):
     model = getattr(net_module, m_name)(classes, config=config)
     num_classes = len(classes)
 
-
     loss = getattr(net_module, config['train']['loss'])
     metrics = getattr(net_module, config['metrics'])(num_classes)
 
@@ -95,14 +87,12 @@ def train_main(config, resume):
     opt_args = config['optimizer']['args']
     optimizer = getattr(torch.optim, opt_name)(trainable_params, **opt_args)
 
-
     lr_name = config['lr_scheduler']['type']
     lr_args = config['lr_scheduler']['args']
     if lr_name == 'None':
         lr_scheduler = None
     else:
         lr_scheduler = getattr(torch.optim.lr_scheduler, lr_name)(optimizer, **lr_args)
-
 
     trainer = Trainer(model, loss, metrics, optimizer, 
                       resume=resume,
@@ -114,11 +104,10 @@ def train_main(config, resume):
 
     trainer.train()
     return trainer
-    #duration = 1; freq = 440
-    #os.system('play --no-show-progress --null --channels 1 synth %s sine %f'%(duration, freq))
+    # duration = 1; freq = 440
+    # os.system('play --no-show-progress --null --channels 1 synth %s sine %f'%(duration, freq))
 
 def _test_loader(config):
-
     def disp_batch(batch):
         ret = []
         for b in batch:
@@ -134,9 +123,6 @@ def _test_loader(config):
     print(tsf.transfs)
     for batch in loader:
         print(disp_batch([batch[0], batch[-1]]))
-
-
-
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser(description='PyTorch Template')
@@ -155,7 +141,6 @@ if __name__ == '__main__':
                            help='nn layer config file')
 
     args = argparser.parse_args()
-
 
     # Resolve config vs. resume
     checkpoint = None
