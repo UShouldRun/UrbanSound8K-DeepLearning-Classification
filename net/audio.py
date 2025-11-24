@@ -10,7 +10,6 @@ def _num_stft_bins(lengths, fft_length, hop_length, pad):
     return (lengths + 2 * pad - fft_length + hop_length) // hop_length
 
 class MelspectrogramStretch(MelSpectrogram):
-
     def __init__(self, hop_length=None, 
                        sample_rate=44100, 
                        num_mels=128, 
@@ -64,11 +63,8 @@ class MelspectrogramStretch(MelSpectrogram):
     def __repr__(self):
         return self.__class__.__name__ + '()'
 
-
 class RandomTimeStretch(TimeStretch):
-
     def __init__(self, max_perc, hop_length=None, n_freq=201, fixed_rate=None):
-
         super(RandomTimeStretch, self).__init__(hop_length, n_freq, fixed_rate)
         self._dist = Uniform(1.-max_perc, 1+max_perc)
 
@@ -76,11 +72,8 @@ class RandomTimeStretch(TimeStretch):
         rate = self._dist.sample().item()
         return super(RandomTimeStretch, self).forward(x, rate), rate
 
-
 class SpecNormalization(nn.Module):
-
     def __init__(self, norm_type, top_db=80.0):
-
         super(SpecNormalization, self).__init__()
 
         if 'db' == norm_type:
@@ -90,7 +83,6 @@ class SpecNormalization(nn.Module):
         else:
             self._norm = lambda x: x
         
-    
     def z_transform(self, x):
         # Independent mean, std per batch
         non_batch_inds = [1, 2, 3]

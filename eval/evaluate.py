@@ -6,9 +6,7 @@ from net import MelspectrogramStretch
 from utils import plot_heatmap, mkdir_p
 
 class ClassificationEvaluator(object):
-
     def __init__(self, data_loader, model):
-
         self.data_loader = data_loader
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model.to(self.device)
@@ -24,8 +22,6 @@ class ClassificationEvaluator(object):
                 data, target = batch[:-1], batch[-1]
                 
                 output = self.model(data)
-
-                self.model.classes
                 batch_size = data[0].size(0)
                 
                 if debug:
@@ -38,11 +34,7 @@ class ClassificationEvaluator(object):
             ret = {met.__name__ : "%.3f"%(total_metrics[i].item() / size) for i, met in enumerate(metrics)}
             return ret
 
-
-
-
     def _store_batch(self, data, batch_size, output, target):
-
         path = 'eval_batch'
         mkdir_p(path)
         sig, lengths, _ = data

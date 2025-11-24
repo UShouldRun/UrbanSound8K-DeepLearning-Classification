@@ -1,14 +1,11 @@
-
-
 import os, errno
-from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 import soundfile as sf
+
 from matplotlib.ticker import LogLocator
 from matplotlib.colors import LogNorm
 from matplotlib import cm
-
 
 def mkdir_p(path):
     try:
@@ -19,9 +16,7 @@ def mkdir_p(path):
         else:
             raise
 
-
 def setup_logging(logging_path='logs'):
-
     log_path = os.path.join(os.getcwd(),logging_path)
     mkdir_p(log_path)
 
@@ -38,7 +33,6 @@ def setup_logging(logging_path='logs'):
 
     return run_path
 
-
 def list_dir(path):
     filter_dir = lambda x: os.path.isdir(os.path.join(path,x))
     filter_file = lambda x: os.path.isfile(os.path.join(path,x)) and not x.startswith('.') \
@@ -48,14 +42,8 @@ def list_dir(path):
     
     return ret
 
-
-def load_image(path):
-    #return cv2.imread(path)[...,::-1]
-    return Image.open(path)
-
 def load_audio(path):
     return sf.read(path)
-
 
 def plot_heatmap(arr, fname, pred=''):
     arr = np.flip(arr.mean(0), axis=0)

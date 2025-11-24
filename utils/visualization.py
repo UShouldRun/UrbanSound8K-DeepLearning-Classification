@@ -1,4 +1,3 @@
-#import importlib
 import os
 import tensorboardX
 
@@ -10,9 +9,9 @@ class WriterTensorboardX():
             valid_log_path = os.path.join(writer_dir, 'valid')
             
             self.writers = {
-                            'train' : tensorboardX.SummaryWriter(train_log_path),
-                            'valid' : tensorboardX.SummaryWriter(valid_log_path)
-                    }
+                'train' : tensorboardX.SummaryWriter(train_log_path),
+                'valid' : tensorboardX.SummaryWriter(valid_log_path)
+            }
 
         self.step = 0
         self.mode = ''
@@ -51,4 +50,3 @@ class WriterTensorboardX():
             except AttributeError:
                 raise AttributeError("type object 'WriterTensorboardX' has no attribute '{}'".format(name))
             return attr
-            
