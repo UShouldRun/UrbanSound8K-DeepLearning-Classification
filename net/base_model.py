@@ -2,7 +2,6 @@ import logging
 import torch.nn as nn
 import numpy as np
 
-
 class BaseModel(nn.Module):
     """
     Base class for all models

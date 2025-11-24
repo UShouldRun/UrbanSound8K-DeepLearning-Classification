@@ -159,7 +159,6 @@ class Trainer(BaseTrainer):
             #    if param.requires_grad:
             #        self.writer.add_histogram(name, param.clone().cpu().numpy(), bins='doane')
 
-
         return {
             'val_loss': val_loss,
             'val_metrics': val_metrics

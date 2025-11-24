@@ -20,7 +20,8 @@
       "args": {
         "channels": "avg",
         "noise": [0.3, 0.001],
-        "crop": [0.4, 0.25]
+        "crop": [0.4, 0.25],
+        "augmentation": [0.3, 0.01]
       }
     },
     "optimizer": {

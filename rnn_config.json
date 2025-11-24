@@ -20,15 +20,19 @@
     "args": {
       "channels": "avg",
       "noise": [0.3, 0.001],
-      "crop": [0.4, 0.25]
+      "crop": [0.4, 0.25],
+      "augmentation": [0.3, 0.01]
     }
   },
   "optimizer": {
-    "type": "Adam",
+    "type": "RMSprop",
     "args": {
       "lr": 0.002,
+      "alpha": 0.95,
+      "eps": 1e-08,
       "weight_decay": 0.01,
-      "amsgrad": true
+      "momentum": 0,
+      "centered": false
     }
   },
   "lr_scheduler": {
@@ -43,7 +47,7 @@
   },
   "train": {
     "loss": "nll_loss",
-    "epochs": 100,
+    "epochs": 10,
     "save_dir": "saved_cv/",
     "save_p": 1,
     "verbosity": 2,

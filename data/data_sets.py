@@ -1,8 +1,3 @@
-"""
-Dataset in charge of knowing where the source of data, labels and transforms.
-Should provide access to the data by indexing.
-"""
-
 import os
 import pandas as pd
 import numpy as np
