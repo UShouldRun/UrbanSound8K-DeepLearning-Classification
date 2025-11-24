@@ -86,6 +86,32 @@ class AudioCRNN(BaseModel):
 
 class AudioCNN(AudioCRNN):
 
+    def __init__(self, classes, config={}, state_dict=None):
+        super(AudioCNN, self).__init__(config)
+        
+        in_chan = 2 if config['transforms']['args']['channels'] == 'stereo' else 1
+
+        self.classes = classes
+        self.cnn_units = config.get('cnn_units')
+        self.cnn_layers = config.get('cnn_layers')
+
+        # Spectrogram transform
+        self.spec = MelspectrogramStretch(
+            hop_length=config.get('hop_length', None),
+            num_mels=config.get('num_mels', 128),
+            fft_length=config.get('fft_length', 2048),
+            norm=config.get('norm', 'whiten'),
+            stretch_param=config.get('stretch_param', [0.4, 0.4])
+        )
+
+        # Build network from cfg
+        self.net = parse_cfg(config['cfg'], in_shape=[in_chan, self.spec.n_mels, 400])
+        features = self.spec.n_mels  # features per time step
+        self.net = parse_cfg(config['cfg'], in_shape=[400, features])
+
+        if state_dict is not None:
+            self.load_state_dict(state_dict)
+
     def forward(self, batch):
         x, _, _ = batch
         # x-> (batch, channel, time)
@@ -104,6 +130,13 @@ class AudioCNN(AudioCRNN):
         x = F.log_softmax(x, dim=1)
 
         return x
+
+    def predict(self, batch):
+        with torch.no_grad():
+            out_raw = self.forward(batch)
+            out = torch.exp(out_raw)
+            max_ind = out.argmax().item()
+            return self.classes[max_ind], out[:, max_ind].item()
 
 class AudioRNN(BaseModel):
     def __init__(self, classes, config={}, state_dict=None):
