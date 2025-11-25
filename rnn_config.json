@@ -27,7 +27,7 @@
   "optimizer": {
     "type": "RMSprop",
     "args": {
-      "lr": 0.002,
+      "lr": 0.005,
       "alpha": 0.95,
       "eps": 1e-08,
       "weight_decay": 0.01,
@@ -38,8 +38,8 @@
   "lr_scheduler": {
     "type": "StepLR",
     "args": {
-      "step_size": 10,
-      "gamma": 0.5
+      "step_size": 2,
+      "gamma": 0.75
     }
   },
   "model": {
@@ -47,12 +47,12 @@
   },
   "train": {
     "loss": "nll_loss",
-    "epochs": 10,
+    "epochs": 20,
     "save_dir": "saved_cv/",
     "save_p": 1,
     "verbosity": 2,
     "monitor": "min val_loss",
-    "early_stop": 8,
+    "early_stop": 5,
     "tbX": true
   },
   "metrics": "classification_metrics"

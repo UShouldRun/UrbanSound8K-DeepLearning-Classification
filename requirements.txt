@@ -9,5 +9,5 @@ torch
 torchvision
 torchaudio
 tensorboardX
-https://github.com/ksanjeevan/crnn-audio-classification
 tqdm
+seaborn
