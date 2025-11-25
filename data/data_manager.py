@@ -7,12 +7,11 @@ import torch.utils.data as data
 from torch.utils.data.dataloader import default_collate
 
 from data.data_sets import FolderDataset
-from utils.util import list_dir, load_image, load_audio
+from utils.util import list_dir, load_audio
 
 class CSVDataManager(object):
     def __init__(self, config):
         load_formats = {
-            'image': load_image,
             'audio': load_audio
         }
 
