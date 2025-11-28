@@ -1,4 +1,5 @@
 UrbanSound8K*
 *.pdf
 saved_cv
+data_cache
 *__pycache__*
