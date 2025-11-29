@@ -1,0 +1,16 @@
+{
+    "sample_rate": 22050,
+    "target_duration": 88200,
+    "num_mels": 128,
+    "fft_length": 2048,
+    "hop_length": 512,
+    "norm": "whiten",
+    "stretch_param": [0.4, 0.4],
+    
+    "hidden_size": 64,
+    "num_layers": 2,
+    "bidirectional": false,
+    "rnn_dropout": 0.1,
+    
+    "dropout": 0.3
+}

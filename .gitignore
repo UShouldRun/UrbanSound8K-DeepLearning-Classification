@@ -4,4 +4,6 @@ data_cache
 *__pycache__*
 
 *.pdf
-*.wav
+notebooks/*.wav
+
+bench.py
