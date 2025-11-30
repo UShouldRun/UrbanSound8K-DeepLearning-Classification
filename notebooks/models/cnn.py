@@ -50,9 +50,8 @@ class AudioCNN(nn.Module):
             nn.BatchNorm2d(self.hidden_channels),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Dropout2d(p=self.dropout)
+            nn.Dropout2d(p=self.dropout),
 
-            
             # Layer 2 to n_layers+1: All take hidden_channels -> Hidden channels
             *[nn.Sequential(
                 nn.Conv2d(self.hidden_channels, self.hidden_channels, kernel_size=3, padding=self.padding),
@@ -244,6 +243,34 @@ class AudioCNN(nn.Module):
         test_acc = test_correct / test_total
         
         return avg_test_loss, test_acc, all_predictions, all_targets
+    
+    @staticmethod
+    def loadModel(path: str, config, device=None) -> nn.Module:
+        if device is None:
+            device = AudioCNN.setDevice()
+
+        model = AudioCNN(num_classes = config["num_classes"], config=config)
+
+        model.load_state_dict(torch.load(path, weights_only=True), strict = False)
+        model.eval()
+        print(f"Model loaded from {path}")
+        print(model)
+    
+        return model
+    
+    # Set the device for training (GPU if available, else CPU)
+    @staticmethod
+    def setDevice() -> torch.device:
+        device = (
+            torch.device("cuda")
+            if torch.cuda.is_available()
+            else torch.device("cpu")
+        )
+        if torch.cuda.is_available():
+            print(f"Using {device} device: {torch.cuda.get_device_name(0)}")
+        else:
+            print(f"Using {device} device")
+        return device
 
 class LazyAudioCNNDataset(Dataset):
     def __init__(self, audio_paths, labels):
