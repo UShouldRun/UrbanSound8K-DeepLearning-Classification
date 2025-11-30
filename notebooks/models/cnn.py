@@ -34,6 +34,8 @@ class AudioCNN(nn.Module):
         self.num_layers = self.config.get('num_layers', 3)
         self.cnn_dropout = self.config.get('cnn_dropout', 0.3)
 
+        self.dropout = self.config.get('dropout', 0.3)
+
         self.scheduler_step_size = self.config.get('scheduler_step_size', 5)
         self.scheduler_gamma = self.config.get('scheduler_gamma', 0.5)
 
@@ -48,6 +50,7 @@ class AudioCNN(nn.Module):
             nn.BatchNorm2d(self.hidden_channels),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Dropout2d(p=self.dropout)
 
             
             # Layer 2 to n_layers+1: All take hidden_channels -> Hidden channels
@@ -55,7 +58,8 @@ class AudioCNN(nn.Module):
                 nn.Conv2d(self.hidden_channels, self.hidden_channels, kernel_size=3, padding=self.padding),
                 nn.BatchNorm2d(self.hidden_channels),
                 nn.ReLU(),
-                nn.MaxPool2d(kernel_size=2, stride=2)
+                nn.MaxPool2d(kernel_size=2, stride=2),
+                nn.Dropout2d(p=self.dropout)
             ) for _ in range(self.num_layers)],
             
             # Final Pooling
