@@ -3,7 +3,7 @@
 
     "sample_rate": 22050,
     "target_duration": 88200,
-    "spec": "melspec",
+    "spec": "mfcc",
     "n_mfcc": 40,
     "num_mels": 128,
     "fft_length": 2048,
@@ -11,7 +11,7 @@
     "norm": "whiten",
     "stretch_param": [0.4, 0.4],
 
-    "hidden_channels": 64,
+    "hidden_channels": 32,
     "num_layers": 5,
     "cnn_dropout": 0.3,
 
@@ -22,8 +22,8 @@
     "epochs": 20,
     "padding": 1,
 
-    "scheduler_step_size": 7,
-    "scheduler_gamma": 0.7,
+    "scheduler_step_size": 5,
+    "scheduler_gamma": 0.1,
 
     "weight_decay": 1e-4,
 

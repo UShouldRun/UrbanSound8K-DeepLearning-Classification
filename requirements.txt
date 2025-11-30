@@ -11,3 +11,4 @@ torchaudio
 tensorboardX
 tqdm
 seaborn
+optuna

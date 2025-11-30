@@ -22,7 +22,7 @@ class AudioRNN(nn.Module):
         self.fft_length = self.config.get('fft_length', 2048)
         self.hop_length = self.config.get('hop_length', 512)
         
-        # Melspectrogram transform
+        # Melspectrogram transform (Output shape is (batch, num_mels, time))
         self.spec = MelspectrogramStretch(
             hop_length=self.hop_length,
             sample_rate=self.sample_rate,
@@ -32,34 +32,74 @@ class AudioRNN(nn.Module):
             stretch_param=self.config.get('stretch_param', [0.4, 0.4])
         )
         
-        # RNN parameters
-        self.hidden_size = self.config.get('hidden_size', 64)
-        self.num_layers = self.config.get('num_layers', 2)
-        self.bidirectional = self.config.get('bidirectional', False)
-        self.rnn_dropout = self.config.get('rnn_dropout', 0.1)
+        # Tunable hyperparameters
+        self.units = self.config.get('units', 128)  # Base LSTM units
+        self.dense_units = self.config.get('dense_units', 128)
+        self.dropout_rate = self.config.get('dropout_rate', 0.3) # LSTM dropout
+        self.dropout_rate_dense = self.config.get('dropout', 0.4) # Dense dropout
+        self.bidirectional = self.config.get('bidirectional', True)
+        
+        # Scheduler parameters
         self.scheduler_step_size = self.config.get('scheduler_step_size', 5)
         self.scheduler_gamma = self.config.get('scheduler_gamma', 0.5)
         
-        # Build LSTM
-        self.lstm = nn.LSTM(
+        # LSTM Layer 1: full units, return sequences
+        # Input size: num_mels
+        # Output size (Bi-LSTM): 2 * self.units
+        self.lstm1 = nn.LSTM(
             input_size=self.num_mels,
-            hidden_size=self.hidden_size,
-            num_layers=self.num_layers,
-            bidirectional=self.bidirectional,
-            dropout=self.rnn_dropout if self.num_layers > 1 else 0.0,
-            batch_first=True
+            hidden_size=self.units,
+            num_layers=1,
+            batch_first=True,
+            bidirectional=self.bidirectional
         )
         
-        # Dense layer parameters
-        lstm_output_size = self.hidden_size * (2 if self.bidirectional else 1)
-        self.dropout_p = self.config.get('dropout', 0.3)
+        # LSTM Layer 2: half units, return sequences
+        # Input size: 2 * self.units (from bidirectional output of lstm1)
+        # Output size (Bi-LSTM): 2 * (self.units // 2) = self.units
+        self.lstm2 = nn.LSTM(
+            input_size=self.units * 2,
+            hidden_size=self.units // 2,
+            num_layers=1,
+            batch_first=True,
+            bidirectional=self.bidirectional
+        )
         
-        # Build dense layers
+        # LSTM Layer 3: quarter units, no return sequences (handled in forward)
+        # Input size: 2 * (self.units // 2) = self.units (from bidirectional output of lstm2)
+        # Output size (Bi-LSTM): 2 * (self.units // 4) = self.units // 2
+        self.lstm3 = nn.LSTM(
+            input_size=self.units,
+            hidden_size=self.units // 4,
+            num_layers=1,
+            batch_first=True,
+            bidirectional=self.bidirectional
+        )
+        
+        # Dropout layers
+        self.dropout = nn.Dropout(self.dropout_rate)
+        
+        # Dense layers with L2 regularization (weight_decay in optimizer)
+        # Input size: 2 * (self.units // 4) (from bidirectional output of lstm3)
+        lstm_output_size = self.units // 2
         self.dense = nn.Sequential(
-            nn.Dropout(self.dropout_p),
-            nn.LayerNorm(lstm_output_size),
-            nn.Linear(lstm_output_size, num_classes)
+            nn.Linear(lstm_output_size, self.dense_units),
+            nn.ReLU(),
+            nn.Dropout(self.dropout_rate_dense),
+            nn.Linear(self.dense_units, num_classes)
         )
+        
+        # Apply L2 regularization through weight initialization awareness
+        self._init_weights()
+    
+    def _init_weights(self):
+        """Initialize weights for regularization"""
+        for name, param in self.named_parameters():
+            if 'weight' in name:
+                if 'lstm' in name:
+                    nn.init.orthogonal_(param)
+                elif 'dense' in name or 'linear' in name.lower():
+                    nn.init.xavier_uniform_(param)
     
     def _many_to_one(self, t, lengths):
         """Extract last relevant output for each sequence"""
@@ -85,18 +125,37 @@ class AudioRNN(nn.Module):
         # Flatten: (batch, time, features)
         x = x.reshape(batch_size, time, -1)
         
-        # Pack padded sequence
+        # Pack padded sequence for first LSTM
         x_pack = nn.utils.rnn.pack_padded_sequence(
             x, lengths.cpu(), batch_first=True, enforce_sorted=False
         )
         
-        # LSTM
-        x_pack, _ = self.lstm(x_pack)
-        
-        # Unpack
+        # LSTM Layer 1
+        x_pack, _ = self.lstm1(x_pack)
         x, _ = nn.utils.rnn.pad_packed_sequence(x_pack, batch_first=True)
+        x = self.dropout(x)
         
-        # Many-to-one
+        # Pack for second LSTM
+        x_pack = nn.utils.rnn.pack_padded_sequence(
+            x, lengths.cpu(), batch_first=True, enforce_sorted=False
+        )
+        
+        # LSTM Layer 2
+        x_pack, _ = self.lstm2(x_pack)
+        x, _ = nn.utils.rnn.pad_packed_sequence(x_pack, batch_first=True)
+        x = self.dropout(x)
+        
+        # Pack for third LSTM
+        x_pack = nn.utils.rnn.pack_padded_sequence(
+            x, lengths.cpu(), batch_first=True, enforce_sorted=False
+        )
+        
+        # LSTM Layer 3 (final, return_sequences=False equivalent)
+        x_pack, _ = self.lstm3(x_pack)
+        x, _ = nn.utils.rnn.pad_packed_sequence(x_pack, batch_first=True)
+        x = self.dropout(x)
+        
+        # Many-to-one: get last relevant output
         x = self._many_to_one(x, lengths)
         
         # Dense layers
@@ -104,7 +163,6 @@ class AudioRNN(nn.Module):
         
         return F.log_softmax(x, dim=1)
     
-
     @staticmethod
     def trainModel(model, train_loader, val_loader, test_fold,
               history, config, fold_dir,
@@ -114,7 +172,11 @@ class AudioRNN(nn.Module):
         best_val_loss = float('inf')
         best_val_acc = 0.0
         
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=model.scheduler_step_size, gamma=model.scheduler_gamma)
+        scheduler = optim.lr_scheduler.StepLR(
+            optimizer, 
+            step_size=model.scheduler_step_size, 
+            gamma=model.scheduler_gamma
+        )
 
         for epoch in range(1, epochs + 1):
             print(f"\nEpoch {epoch}/{epochs}")
@@ -202,8 +264,8 @@ class AudioRNN(nn.Module):
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
-            # Step shceduler at the end of epoch
             scheduler.step()
+            print(f"lr = {scheduler.get_last_lr()[0]}")
 
         return best_val_loss, best_val_acc
     
@@ -240,6 +302,20 @@ class AudioRNN(nn.Module):
         test_acc = test_correct / test_total
         
         return avg_test_loss, test_acc, all_predictions, all_targets
+
+    @staticmethod
+    def loadModel(path: str, config, device=None) -> nn.Module:
+        if device is None:
+            device = AudioRNN.setDevice()
+
+        model = AudioRNN(num_classes = config["num_classes"], config=config)
+
+        model.load_state_dict(torch.load(path, weights_only=True), strict = False)
+        model.eval()
+        print(f"Model loaded from {path}")
+        print(model)
+    
+        return model.to(device)
 
 class LazyAudioRNNDataset(Dataset):
     def __init__(self, audio_paths, labels):

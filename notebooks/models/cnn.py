@@ -7,7 +7,7 @@ import torch.optim as optim
 import numpy as np
 import os
 
-from .helper_classes import MelspectrogramStretch
+from .helper_classes import MelspectrogramStretch, MFCCTransform
 
 class AudioCNN(nn.Module):
     def __init__(self, num_classes=10, config={}):
@@ -21,13 +21,22 @@ class AudioCNN(nn.Module):
         self.input_channels = 1
 
         # Spectrogram transform
-        self.spec = MelspectrogramStretch(
-            hop_length=config.get('hop_length', None),
-            num_mels=config.get('num_mels', 128),
-            fft_length=config.get('fft_length', 2048),
-            norm=config.get('norm', 'whiten'),
-            stretch_param=config.get('stretch_param', [0.4, 0.4])
-        )
+        if config["spec"] == "mfcc":
+            self.spec = MFCCTransform(
+                sr=config.get('sample_rate', 22050),
+                n_mfcc=config.get('n_mfcc', 40),
+                fft_length=config.get('fft_length', 2048),
+                hop_length=config.get('hop_length', None),
+                n_mels=config.get('num_mels', 128)
+            )
+        else:
+            self.spec = MelspectrogramStretch(
+                hop_length=config.get('hop_length', None),
+                num_mels=config.get('num_mels', 128),
+                fft_length=config.get('fft_length', 2048),
+                norm=config.get('norm', 'whiten'),
+                stretch_param=config.get('stretch_param', [0.4, 0.4])
+            )
 
         # CNN parameters
         self.hidden_channels = self.config.get('hidden_channels', 32)
@@ -207,6 +216,7 @@ class AudioCNN(nn.Module):
 
             # Step shceduler at the end of epoch
             scheduler.step()
+            print(f"lr = {scheduler.get_last_lr()[0]}")
 
         return best_val_loss, best_val_acc
 
@@ -256,7 +266,7 @@ class AudioCNN(nn.Module):
         print(f"Model loaded from {path}")
         print(model)
     
-        return model
+        return model.to(device)
     
     # Set the device for training (GPU if available, else CPU)
     @staticmethod

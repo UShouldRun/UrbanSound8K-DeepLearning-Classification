@@ -178,3 +178,45 @@ class MelspectrogramStretch(MelSpectrogram):
 
     def __repr__(self):
         return self.__class__.__name__ + '()'
+
+class MFCCTransform(nn.Module):
+    def __init__(self, sr=22050, n_mfcc=40, n_fft=2048, hop_length=512, n_mels=128):
+        super().__init__()
+        self.sr = sr
+        self.n_mfcc = n_mfcc
+        self.n_fft = n_fft
+        self.hop_length = hop_length
+        self.n_mels = n_mels
+        
+    def forward(self, audio_batch, lengths):
+        batch_size = audio_batch.size(0)
+        device = audio_batch.device
+        
+        mfcc_list = []
+        new_lengths = []
+        
+        for i in range(batch_size):
+            audio = audio_batch[i, 0, :lengths[i]].cpu().numpy()
+            
+            # Extract MFCC
+            mfcc = librosa.feature.mfcc(
+                y=audio, sr=self.sr, n_mfcc=self.n_mfcc,
+                n_fft=self.n_fft, hop_length=self.hop_length, n_mels=self.n_mels
+            )
+            
+            mfcc_list.append(torch.FloatTensor(mfcc))
+            new_lengths.append(mfcc.shape[1])
+        
+        # Pad to same length
+        max_frames = max(new_lengths)
+        padded_mfccs = []
+        for mfcc in mfcc_list:
+            pad_amount = max_frames - mfcc.size(1)
+            if pad_amount > 0:
+                mfcc = F.pad(mfcc, (0, pad_amount), value=0)
+            padded_mfccs.append(mfcc)
+        
+        mfcc_batch = torch.stack(padded_mfccs).unsqueeze(1)
+        new_lengths = torch.LongTensor(new_lengths)
+        
+        return mfcc_batch.to(device), new_lengths.to(device)
