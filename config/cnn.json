@@ -1,4 +1,6 @@
 {
+    "num_classes": 10,
+
     "sample_rate": 22050,
     "target_duration": 88200,
     "num_mels": 128,
@@ -10,6 +12,10 @@
     "hidden_channels": 32,
     "num_layers": 3,
     "cnn_dropout": 0.3,
+    
+    "epochs": 20,
+    "batch_size": 32,
+    "lr": 0.01,
     
     "scheduler_step_size": 5,
     "scheduler_gamma": 0.5,

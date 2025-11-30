@@ -1,4 +1,6 @@
 {
+    "num_classes": 10,
+
     "sample_rate": 22050,
     "target_duration": 88200,
     "num_mels": 128,
@@ -12,7 +14,11 @@
     "bidirectional": false,
     "rnn_dropout": 0.1,
     
-    "dropout": 0.3,
+    "dropout": 0,
+    
+    "epochs": 20,
+    "batch_size": 32,
+    "lr": 0.001,
 
     "scheduler_step_size": 5,
     "scheduler_gamma": 0.5,

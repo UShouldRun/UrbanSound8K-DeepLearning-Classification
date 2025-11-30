@@ -1,13 +1,13 @@
-from tqdm import tqdm
 import torch
 import torch.nn.functional as F
-from torch.utils.data import Dataset
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import os
 
-from helper_classes import MelspectrogramStretch
+from tqdm import tqdm
+from torch.utils.data import Dataset
+from .helper_classes import MelspectrogramStretch
 
 class AudioRNN(nn.Module):
     def __init__(self, num_classes=10, config=None):
@@ -37,8 +37,8 @@ class AudioRNN(nn.Module):
         self.num_layers = self.config.get('num_layers', 2)
         self.bidirectional = self.config.get('bidirectional', False)
         self.rnn_dropout = self.config.get('rnn_dropout', 0.1)
-        self.scheduler_step_size = 5
-        self.scheduler_gamma = 0.5
+        self.scheduler_step_size = self.config.get('scheduler_step_size', 5)
+        self.scheduler_gamma = self.config.get('scheduler_gamma', 0.5)
         
         # Build LSTM
         self.lstm = nn.LSTM(
@@ -240,7 +240,6 @@ class AudioRNN(nn.Module):
         test_acc = test_correct / test_total
         
         return avg_test_loss, test_acc, all_predictions, all_targets
-        
 
 class LazyAudioRNNDataset(Dataset):
     def __init__(self, audio_paths, labels):

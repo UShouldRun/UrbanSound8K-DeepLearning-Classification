@@ -10,7 +10,6 @@ from torch.utils.data import Dataset, DataLoader
 from torchaudio.transforms import Spectrogram, MelSpectrogram, TimeStretch, AmplitudeToDB
 from torch.distributions import Uniform
 
-
 class TrainingHistory:
     def __init__(self):
         self.history = defaultdict(list)

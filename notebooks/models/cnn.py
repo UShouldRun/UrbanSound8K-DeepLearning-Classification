@@ -7,14 +7,13 @@ import torch.optim as optim
 import numpy as np
 import os
 
-from helper_classes import MelspectrogramStretch
+from .helper_classes import MelspectrogramStretch
 
 class AudioCNN(nn.Module):
-
-    def __init__(self, classes=10, config={}):
+    def __init__(self, num_classes=10, config={}):
         super(AudioCNN, self).__init__()
         
-        self.num_classes = classes
+        self.num_classes = num_classes
         self.config = config
 
         self.net = nn.ModuleDict() 
@@ -35,9 +34,11 @@ class AudioCNN(nn.Module):
         self.num_layers = self.config.get('num_layers', 3)
         self.cnn_dropout = self.config.get('cnn_dropout', 0.3)
 
+        self.scheduler_step_size = self.config.get('scheduler_step_size', 5)
+        self.scheduler_gamma = self.config.get('scheduler_gamma', 0.5)
+
         # self.final_flatten_size = self.config.get('final_flatten_size')
         self.padding = self.config.get('padding', 1)
-
 
         # Build network from cfg
         # Input shape: [channel, frequency, time]
@@ -82,7 +83,6 @@ class AudioCNN(nn.Module):
         )
 
     def forward(self, audio, lengths):
-        
         # Add channel dimension: (batch, time) -> (batch, 1, time)
         if audio.dim() == 2:
             audio = audio.unsqueeze(1)
