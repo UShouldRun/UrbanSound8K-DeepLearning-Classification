@@ -1,9 +1,10 @@
 UrbanSound8K*
 saved_cv
 data_cache
+tuning*
 *__pycache__*
 
-*.pdf
+*.xlsx
 notebooks/*.wav
 
 bench.py

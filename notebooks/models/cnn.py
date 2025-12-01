@@ -25,7 +25,7 @@ class AudioCNN(nn.Module):
             self.spec = MFCCTransform(
                 sr=config.get('sample_rate', 22050),
                 n_mfcc=config.get('n_mfcc', 40),
-                fft_length=config.get('fft_length', 2048),
+                n_fft=config.get('fft_length', 2048),
                 hop_length=config.get('hop_length', None),
                 n_mels=config.get('num_mels', 128)
             )
